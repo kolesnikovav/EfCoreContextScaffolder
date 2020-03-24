@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyModel;
 using Microsoft.Extensions.DependencyModel.Resolution;
 using System.Collections.Generic;
 
-namespace EFCoreDBContextScaffolder
+namespace AK.EFContextCommon.Console
 {
     //https://www.codeproject.com/Articles/1194332/Resolving-Assemblies-in-NET-Core
     internal sealed class AssemblyResolver : IDisposable

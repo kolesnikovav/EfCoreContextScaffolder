@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using AK.EFContextCommon;
 
 namespace animals
 {

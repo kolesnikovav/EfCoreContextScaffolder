@@ -3,7 +3,7 @@ using System.Text;
 using CommandLine;
 
 
-namespace EFCoreDBContextScaffolder
+namespace AK.EFContextCommon.Console
 {
     public class Options
     {
@@ -34,7 +34,7 @@ namespace EFCoreDBContextScaffolder
                 Scaffolder _scaffolder = new Scaffolder(_path,_out);
                 _scaffolder.ReadAssembly();
             });
-            Console.WriteLine("Created dll successifuly!");
+            System.Console.WriteLine("Created dll successifuly!");
         }
     }
 }

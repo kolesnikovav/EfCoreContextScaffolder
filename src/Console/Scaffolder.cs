@@ -6,8 +6,9 @@ using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
 using Lokad.ILPack;
+using AK.EFContextCommon;
 
-namespace EFCoreDBContextScaffolder
+namespace AK.EFContextCommon.Console
 {
     public class DBContextContent
     {
@@ -43,61 +44,6 @@ namespace EFCoreDBContextScaffolder
                 tb = tb.BaseType;
             }
         }
-
-        private List<PropertyInfo> GetAllProps(Type t)
-        {
-            var result = new List<PropertyInfo>();
-            result.AddRange(t.GetProperties());
-            return result;
-        }
-        private void AddGetSetMethodsForProperty(PropertyBuilder pb, PropertyInfo cProp, TypeBuilder createdType, FieldBuilder fieldBuilder)
-        {
-            MethodBuilder methodBuilderGet = createdType.DefineMethod("get_" + cProp.Name, MethodAttributes.Public);
-            methodBuilderGet.SetReturnType(cProp.PropertyType);
-            //create IL code for get
-            ILGenerator genusGetIL = methodBuilderGet.GetILGenerator();
-            genusGetIL.Emit(OpCodes.Ldarg_0);
-            genusGetIL.Emit(OpCodes.Ldfld, fieldBuilder);
-            genusGetIL.Emit(OpCodes.Ret);
-            pb.SetGetMethod(methodBuilderGet);
-
-            MethodBuilder methodBuilderSet = createdType.DefineMethod("set_" + cProp.Name, MethodAttributes.Public);
-            methodBuilderSet.SetParameters(new Type[] { cProp.PropertyType });
-            //create IL code for set
-            ILGenerator genusSetIL = methodBuilderSet.GetILGenerator();
-            genusSetIL.Emit(OpCodes.Ldarg_0);
-            genusSetIL.Emit(OpCodes.Ldarg_1);
-            genusSetIL.Emit(OpCodes.Stfld, fieldBuilder);
-            genusSetIL.Emit(OpCodes.Ret);
-            pb.SetSetMethod(methodBuilderSet);
-        }
-
-        private void AddGetSetMethodsForProperty(PropertyBuilder pb, string propName, Type propType, TypeBuilder createdType, FieldBuilder fieldBuilder)
-        {
-            MethodBuilder methodBuilderGet = createdType.DefineMethod("get_" + propName, MethodAttributes.Public);
-            methodBuilderGet.SetReturnType(propType);
-            //create IL code for get
-            ILGenerator genusGetIL = methodBuilderGet.GetILGenerator();
-            genusGetIL.Emit(OpCodes.Ldarg_0);
-            genusGetIL.Emit(OpCodes.Ldfld, fieldBuilder);
-            genusGetIL.Emit(OpCodes.Ret);
-            pb.SetGetMethod(methodBuilderGet);
-
-            MethodBuilder methodBuilderSet = createdType.DefineMethod("set_" + propName, MethodAttributes.Public);
-            methodBuilderSet.SetParameters(new Type[] { propType });
-            //create IL code for set
-            ILGenerator genusSetIL = methodBuilderSet.GetILGenerator();
-            genusSetIL.Emit(OpCodes.Ldarg_0);
-            genusSetIL.Emit(OpCodes.Ldarg_1);
-            genusSetIL.Emit(OpCodes.Stfld, fieldBuilder);
-            genusSetIL.Emit(OpCodes.Ret);
-            pb.SetSetMethod(methodBuilderSet);
-        }
-        internal ModuleResolveEventHandler OnResolve()
-        {
-            return null;
-        }
-
         public void ReadAssembly ()
         {
             if (!File.Exists(path)) throw new Exception(String.Format("File {0} not exists!",this.path));
@@ -121,10 +67,11 @@ namespace EFCoreDBContextScaffolder
                 {
                     if (IsDBContextType(t))
                     {
-                        var createdTypeDBContext = myModBuilder.DefineType(t.Name,TypeAttributes.Class | TypeAttributes.Public);
+                        string ClassName = String.IsNullOrWhiteSpace(t.Namespace) ? "" : t.Namespace + "."+t.Name;
+                        var createdTypeDBContext = myModBuilder.DefineType(ClassName,TypeAttributes.Class | TypeAttributes.Public);
 
                         var DBContextClass = new DBContextContent();
-                        DBContextClass.ClassName = t.Name;
+                        DBContextClass.ClassName = ClassName;
                         DBContextClasses.Add(DBContextClass);
                         createdTypeDBContext.SetParent(t.BaseType);
                         // copy constructor && methods
@@ -173,7 +120,8 @@ namespace EFCoreDBContextScaffolder
                         }
                         foreach(var entityType in EntityTypes)
                         {
-                            var createdType = myModBuilder.DefineType(entityType.Name,TypeAttributes.Class | TypeAttributes.Public);
+                            string entityClassName = String.IsNullOrWhiteSpace(entityType.Namespace) ? "" : entityType.Namespace + "."+entityType.Name;
+                            var createdType = myModBuilder.DefineType(entityClassName,TypeAttributes.Class | TypeAttributes.Public);
                             var propsFlattern = Helper.GetAllProps(entityType); //GetAllProps(entityType);
                             var allEntityAttributes = Helper.GetTypeAttributes(entityType);
 
@@ -204,15 +152,17 @@ namespace EFCoreDBContextScaffolder
                                 {
                                     //
                                 }
-
+                                // some actions when attribute is present!
+                                var memberAttributes = atr.AttributeType.GetMethods();
+                                foreach (var mA in memberAttributes.Where( v => v.Name == "Apply"))
+                                {
+                                    var args = new object[] {entityType, AttributeTargets.Class, myModBuilder, refsAsm};
+                                    mA.Invoke(null, args);
+                                }
                             }
                             foreach (var cProp in propsFlattern)
                             {
-                                FieldBuilder fieldBuilder = createdType.DefineField("_" + cProp.Name.ToLower(), cProp.PropertyType, FieldAttributes.Private);
-                                var pb = createdType.DefineProperty(cProp.Name, PropertyAttributes.None,CallingConventions.Standard, cProp.PropertyType,null);
-                                Helper.TransferAttributes(pb, cProp, refsAsm);
-
-                                AddGetSetMethodsForProperty( pb,  cProp, createdType, fieldBuilder);
+                                Helper.AddGetSetMethodsForProperty(cProp, createdType, refsAsm);
                             }
                             var dbContextType = createdType.CreateType();
                             var eDescr = DBContextClass.Content.First(e => e.EntityType == entityType);
@@ -236,9 +186,7 @@ namespace EFCoreDBContextScaffolder
                          var asm = new AssemblyResolver(tDBsetType.Assembly.Location);
                              refsAsm.Add(tDBSet.Assembly);
                         }
-                        FieldBuilder fieldBuilder = tb.DefineField("_" + contProps.PropName.ToLower(), tDBsetType, FieldAttributes.Private);
-                        var pb = tb.DefineProperty(contProps.PropName,PropertyAttributes.None,CallingConventions.Standard,tDBsetType,new Type[1] { tDBsetType});
-                        AddGetSetMethodsForProperty( pb, contProps.PropName, tDBsetType , tb, fieldBuilder);
+                        Helper.AddGetSetMethodsForProperty(contProps.PropName, tDBsetType, tb);
                     }
                     tb.CreateType();
                 }
