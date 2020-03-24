@@ -175,7 +175,9 @@ namespace EFCoreDBContextScaffolder
                         {
                             var createdType = myModBuilder.DefineType(entityType.Name,TypeAttributes.Class | TypeAttributes.Public);
                             var propsFlattern = Helper.GetAllProps(entityType); //GetAllProps(entityType);
-                            foreach (var atr in entityType.CustomAttributes) // entity attributes
+                            var allEntityAttributes = Helper.GetTypeAttributes(entityType);
+
+                            foreach (var atr in allEntityAttributes) // entity attributes
                             {
                                 var classAtributes = atr.AttributeType.GetCustomAttributesData();
                                 object[] atribArgs = new object[classAtributes.Count];
@@ -186,8 +188,23 @@ namespace EFCoreDBContextScaffolder
                                     Helper.ChekReferences(refsAsm,atrType.Assembly);
                                 }
                                 var  atrArgs = atr.ConstructorArguments.ToArray();
-                                CustomAttributeBuilder cA = new CustomAttributeBuilder(atr.Constructor, atribArgs);
-                                createdType.SetCustomAttribute(cA);
+                                object[] cArgs = new object[atrArgs.Count()];
+                                for (int i=0; i < atrArgs.Count(); i++)
+                                {
+                                    cArgs[i] = (object)atrArgs[i];
+                                }
+                                var cTors = atr.AttributeType.GetConstructors();
+                                var constructorForAttribute = cTors.FirstOrDefault(v => v.GetParameters().Count() == atrArgs.Count());
+                                try
+                                {
+                                    CustomAttributeBuilder cA = new CustomAttributeBuilder(constructorForAttribute, cArgs);
+                                    createdType.SetCustomAttribute(cA);
+                                }
+                                catch (Exception e)
+                                {
+                                    //
+                                }
+
                             }
                             foreach (var cProp in propsFlattern)
                             {

@@ -108,6 +108,21 @@ namespace EFCoreDBContextScaffolder
             }
             return result;
         }
+        internal static List<CustomAttributeData> GetTypeAttributes(Type t)
+        {
+            var cHierarchy = Helper.GetTypeHierarchy(t);
+            List<CustomAttributeData> result = new List<CustomAttributeData>();
+            foreach ( var cType in  cHierarchy)
+            {
+                foreach (var custAtr in cType.CustomAttributes)
+                {
+                    var idx = result.FindIndex(v => v.AttributeType == custAtr.AttributeType);
+                    if (idx == -1) result.Add(custAtr);
+                    else result[idx] = custAtr;
+                }
+            }
+            return result;
+        }
     }
 
 }

@@ -8,6 +8,9 @@ namespace animals
         public DbSet<Dog> Dogs {get;set;}
         public DbSet<Cat> Cats {get;set;}
 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+        }
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
