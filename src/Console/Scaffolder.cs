@@ -157,7 +157,16 @@ namespace AK.EFContextCommon.Console
                                 foreach (var mA in memberAttributes.Where( v => v.Name == "Apply"))
                                 {
                                     var args = new object[] {entityType, AttributeTargets.Class, myModBuilder, refsAsm};
-                                    mA.Invoke(null, args);
+                                    var createdTypeInAttribute = mA.Invoke(null, args);
+                                    if ((Type)createdTypeInAttribute != null)
+                                    {
+                                        EntityDescribtion eDescrGenereted = new EntityDescribtion();
+                                        eDescrGenereted.EntityType = (Type)createdTypeInAttribute;
+                                        eDescrGenereted.PropName = eDescrGenereted.EntityType.Name;
+                                        eDescrGenereted.PropType = (Type)createdTypeInAttribute;
+                                        //eDescrGenereted.PropType = (Type)createdTypeInAttribute;
+                                        DBContextClass.Content.Add(eDescrGenereted);
+                                    }
                                 }
                             }
                             foreach (var cProp in propsFlattern)

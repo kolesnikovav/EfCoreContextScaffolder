@@ -17,7 +17,7 @@ namespace AK.EFContextCommon
         {
             this.HasHierarchy = true;
         }
-        public static void Apply(Type t, AttributeTargets target, ModuleBuilder builder = null,  List<Assembly> refsAsm = null)
+        public static Type Apply(Type t, AttributeTargets target, ModuleBuilder builder = null,  List<Assembly> refsAsm = null)
         {
             Type attrType = Type.GetType("AK.EFContextCommon.HierarchyAttribute");
             bool HasHierarchy = false;
@@ -42,9 +42,10 @@ namespace AK.EFContextCommon
                     {
                         Helper.AddGetSetMethodsForProperty(prop, TypeBuilder , refsAsm);
                     }
-                    TypeBuilder.CreateTypeInfo();
+                    return TypeBuilder.CreateTypeInfo();
                 }
             }
+            return null;
         }
     }
 
